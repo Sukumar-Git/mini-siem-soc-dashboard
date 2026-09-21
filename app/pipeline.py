@@ -3,6 +3,7 @@ from app.log_parser import parse_log
 from app.detection_engine import detect_event
 from app.risk_engine import calculate_risk
 from app.correlation_engine import correlate_events
+from app.incident_engine import create_incidents
 
 
 def run_pipeline():
@@ -32,10 +33,16 @@ def run_pipeline():
 
     correlations = correlate_events(parsed_events)
 
+    incidents = create_incidents(
+        alerts,
+        correlations
+    )
+
     return {
         "events": parsed_events,
         "alerts": alerts,
-        "correlations": correlations
+        "correlations": correlations,
+        "incidents": incidents
     }
 
 
@@ -47,6 +54,7 @@ if __name__ == "__main__":
     print(f"\nEvents processed: {len(results['events'])}")
     print(f"Alerts generated: {len(results['alerts'])}")
     print(f"Correlations found: {len(results['correlations'])}")
+    print(f"Incidents created: {len(results['incidents'])}")
 
     print("\n=== ALERTS ===")
 
@@ -57,3 +65,8 @@ if __name__ == "__main__":
 
     for correlation in results["correlations"]:
         print(correlation)
+
+    print("\n=== INCIDENTS ===")
+
+    for incident in results["incidents"]:
+        print(incident)
