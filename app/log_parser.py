@@ -21,6 +21,9 @@ def classify_event(message):
     if "login successful" in message_lower:
         return "authentication_success"
 
+    if "suspicious network connection" in message_lower:
+        return "suspicious_network_connection"
+
     return "unknown"
 
 
