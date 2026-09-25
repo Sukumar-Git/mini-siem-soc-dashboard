@@ -1,12 +1,13 @@
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 
-# --------------------------------------------------
+# ==================================================
 # PROJECT ROOT
-# --------------------------------------------------
+# ==================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -17,9 +18,9 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.pipeline import run_pipeline
 
 
-# --------------------------------------------------
+# ==================================================
 # PAGE CONFIGURATION
-# --------------------------------------------------
+# ==================================================
 
 st.set_page_config(
     page_title="SENTRY SOC",
@@ -28,9 +29,9 @@ st.set_page_config(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # LOAD SENTRY DATA
-# --------------------------------------------------
+# ==================================================
 
 results = run_pipeline()
 
@@ -40,11 +41,12 @@ correlations = results["correlations"]
 incidents = results["incidents"]
 
 
-# --------------------------------------------------
+# ==================================================
 # HEADER
-# --------------------------------------------------
+# ==================================================
 
 st.title("🛡️ SENTRY SOC")
+
 st.caption(
     "Security Event Detection & Threat Investigation Platform"
 )
@@ -52,15 +54,16 @@ st.caption(
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # TOP METRICS
-# --------------------------------------------------
+# ==================================================
 
 total_events = len(events)
 total_alerts = len(alerts)
 total_incidents = len(incidents)
 
 if incidents:
+
     highest_risk = max(
         incidents,
         key=lambda incident: incident["risk_score"]
@@ -68,23 +71,42 @@ if incidents:
 
     risk_score = highest_risk["risk_score"]
     risk_level = highest_risk["risk_level"].upper()
+
 else:
+
     risk_score = 0
     risk_level = "LOW"
 
 
 col1, col2, col3, col4 = st.columns(4)
 
+
 with col1:
-    st.metric("Events", total_events)
+
+    st.metric(
+        "Events",
+        total_events
+    )
+
 
 with col2:
-    st.metric("Alerts", total_alerts)
+
+    st.metric(
+        "Alerts",
+        total_alerts
+    )
+
 
 with col3:
-    st.metric("Incidents", total_incidents)
+
+    st.metric(
+        "Incidents",
+        total_incidents
+    )
+
 
 with col4:
+
     st.metric(
         "Highest Risk",
         f"{risk_score} / {risk_level}"
@@ -94,15 +116,101 @@ with col4:
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
+# DETECTION & RISK OVERVIEW
+# ==================================================
+
+st.subheader("📊 Detection & Risk Overview")
+
+
+if not alerts:
+
+    st.info(
+        "No alert data available for visualization."
+    )
+
+else:
+
+    overview_col1, overview_col2 = st.columns(2)
+
+
+    # ----------------------------------------------
+    # ALERTS BY DETECTION RULE
+    # ----------------------------------------------
+
+    with overview_col1:
+
+        st.markdown("#### Alerts by Detection Rule")
+
+        rule_counts = {}
+
+        for alert in alerts:
+
+            rule_id = alert["detection"]["rule_id"]
+
+            rule_counts[rule_id] = (
+                rule_counts.get(rule_id, 0) + 1
+            )
+
+        rule_data = pd.DataFrame(
+            {
+                "Alerts": rule_counts
+            }
+        )
+
+        st.bar_chart(
+            rule_data,
+            height=280
+        )
+
+
+    # ----------------------------------------------
+    # RISK SCORE BY ALERT
+    # ----------------------------------------------
+
+    with overview_col2:
+
+        st.markdown("#### Risk Score by Alert")
+
+        risk_data = []
+
+        for index, alert in enumerate(alerts, start=1):
+
+            risk_data.append(
+                {
+                    "Alert": (
+                        f"{alert['detection']['rule_id']}"
+                        f" #{index}"
+                    ),
+                    "Risk Score": alert["risk"]["risk_score"]
+                }
+            )
+
+        risk_dataframe = pd.DataFrame(
+            risk_data
+        ).set_index("Alert")
+
+        st.bar_chart(
+            risk_dataframe,
+            height=280
+        )
+
+
+st.divider()
+
+
+# ==================================================
 # ACTIVE INCIDENTS
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("🚨 Active Incidents")
 
+
 if not incidents:
 
-    st.success("No active incidents detected.")
+    st.success(
+        "No active incidents detected."
+    )
 
 else:
 
@@ -110,7 +218,10 @@ else:
 
         with st.container(border=True):
 
-            col1, col2, col3 = st.columns([2, 2, 1])
+            col1, col2, col3 = st.columns(
+                [2, 2, 1]
+            )
+
 
             with col1:
 
@@ -124,6 +235,7 @@ else:
                     .title()
                 )
 
+
             with col2:
 
                 st.write(
@@ -135,6 +247,12 @@ else:
                     f"**Username:** "
                     f"{incident['username']}"
                 )
+
+                st.write(
+                    f"**Status:** "
+                    f"{incident['status'].upper()}"
+                )
+
 
             with col3:
 
@@ -151,15 +269,18 @@ else:
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # INCIDENT INVESTIGATION
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("🔍 Incident Investigation")
 
+
 if not incidents:
 
-    st.info("No incidents available for investigation.")
+    st.info(
+        "No incidents available for investigation."
+    )
 
 else:
 
@@ -168,21 +289,26 @@ else:
         for incident in incidents
     ]
 
+
     selected_incident_id = st.selectbox(
         "Select an incident",
         incident_options
     )
 
+
     selected_incident = next(
         incident
         for incident in incidents
-        if incident["incident_id"] == selected_incident_id
+        if incident["incident_id"]
+        == selected_incident_id
     )
+
 
     st.markdown(
         f"### {selected_incident['incident_id']} — "
         f"{selected_incident['type'].replace('_', ' ').title()}"
     )
+
 
     # ----------------------------------------------
     # INCIDENT SUMMARY
@@ -192,35 +318,45 @@ else:
         st.columns(4)
     )
 
+
     with summary_col1:
+
         st.metric(
             "Risk Score",
             selected_incident["risk_score"]
         )
 
+
     with summary_col2:
+
         st.metric(
             "Risk Level",
             selected_incident["risk_level"].upper()
         )
 
+
     with summary_col3:
+
         st.metric(
             "Related Events",
             selected_incident["related_events"]
         )
 
+
     with summary_col4:
+
         st.metric(
             "Status",
             selected_incident["status"].upper()
         )
+
 
     # ----------------------------------------------
     # INCIDENT DETAILS
     # ----------------------------------------------
 
     detail_col1, detail_col2 = st.columns(2)
+
 
     with detail_col1:
 
@@ -240,6 +376,7 @@ else:
             f"**Incident Type:** "
             f"{selected_incident['type'].replace('_', ' ').title()}"
         )
+
 
     with detail_col2:
 
@@ -262,23 +399,33 @@ else:
             f"{evidence['time_window_seconds']} seconds"
         )
 
+
     # ----------------------------------------------
     # WHY FLAGGED
     # ----------------------------------------------
 
-    st.markdown("#### 💡 Why was this incident created?")
+    st.markdown(
+        "#### 💡 Why was this incident created?"
+    )
 
     st.info(
         selected_incident["evidence"]["reason"]
     )
 
+
     # ----------------------------------------------
     # TIMELINE
     # ----------------------------------------------
 
-    st.markdown("#### 🕒 Investigation Timeline")
+    st.markdown(
+        "#### 🕒 Investigation Timeline"
+    )
 
-    incident_timestamps = selected_incident["timeline"]
+
+    incident_timestamps = (
+        selected_incident["timeline"]
+    )
+
 
     for timestamp in incident_timestamps:
 
@@ -287,6 +434,7 @@ else:
             for event in events
             if event["timestamp"] == timestamp
         ]
+
 
         if matching_events:
 
@@ -303,11 +451,15 @@ else:
                 f"Level: {event['level']}"
             )
 
+
     # ----------------------------------------------
     # RELATED ALERTS
     # ----------------------------------------------
 
-    st.markdown("#### 🚨 Related Alerts")
+    st.markdown(
+        "#### 🚨 Related Alerts"
+    )
+
 
     related_alerts = [
         alert
@@ -315,6 +467,7 @@ else:
         if alert["event"]["source_ip"]
         == selected_incident["source_ip"]
     ]
+
 
     for alert in related_alerts:
 
@@ -328,15 +481,18 @@ else:
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # SECURITY ALERTS
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("🚨 Security Alerts")
 
+
 if not alerts:
 
-    st.info("No security alerts generated.")
+    st.info(
+        "No security alerts generated."
+    )
 
 else:
 
@@ -346,12 +502,14 @@ else:
         event = alert["event"]
         risk = alert["risk"]
 
+
         with st.expander(
             f"{detection['rule_id']} — "
             f"{event['event']}"
         ):
 
             col1, col2 = st.columns(2)
+
 
             with col1:
 
@@ -370,6 +528,7 @@ else:
                     f"{risk['risk_level'].upper()}"
                 )
 
+
             with col2:
 
                 st.write(
@@ -387,7 +546,11 @@ else:
                     f"{event['timestamp']}"
                 )
 
-            st.markdown("**Why was this flagged?**")
+
+            st.markdown(
+                "**Why was this flagged?**"
+            )
+
 
             st.info(
                 detection["reason"]
@@ -397,15 +560,18 @@ else:
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # CORRELATIONS
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("🔗 Detected Correlations")
 
+
 if not correlations:
 
-    st.info("No event correlations detected.")
+    st.info(
+        "No event correlations detected."
+    )
 
 else:
 
@@ -417,30 +583,36 @@ else:
                 f"**{correlation['correlation_id']}**"
             )
 
+
             correlation_type = (
                 correlation["type"]
                 .replace("_", " ")
                 .title()
             )
 
+
             st.write(
                 f"**Type:** {correlation_type}"
             )
+
 
             st.write(
                 f"**Source IP:** "
                 f"{correlation['source_ip']}"
             )
 
+
             st.write(
                 f"**Events:** "
                 f"{correlation['event_count']}"
             )
 
+
             st.write(
                 f"**Time Window:** "
                 f"{correlation['time_window_seconds']} seconds"
             )
+
 
             st.info(
                 correlation["reason"]
@@ -450,28 +622,43 @@ else:
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # SECURITY EVENTS
-# --------------------------------------------------
+# ==================================================
 
 st.subheader("📋 Security Events")
 
+
 for event in events:
+
+    event_type = (
+        event["event_type"]
+        .replace("_", " ")
+        .title()
+    )
+
 
     st.write(
         f"**{event['timestamp']}** — "
-        f"{event['event']} "
-        f"({event['source_ip']})"
+        f"{event['event']}"
+    )
+
+
+    st.caption(
+        f"Type: {event_type} | "
+        f"Source IP: {event['source_ip']} | "
+        f"Level: {event['level']}"
     )
 
 
 st.divider()
 
 
-# --------------------------------------------------
+# ==================================================
 # FOOTER
-# --------------------------------------------------
+# ==================================================
 
 st.caption(
-    "SENTRY — Security Event Detection & Threat Investigation Platform"
+    "SENTRY — Security Event Detection & "
+    "Threat Investigation Platform"
 )
