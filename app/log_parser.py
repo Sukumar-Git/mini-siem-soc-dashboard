@@ -24,6 +24,9 @@ def classify_event(message):
     if "suspicious network connection" in message_lower:
         return "suspicious_network_connection"
 
+    if "connection to suspicious destination" in message_lower:
+        return "suspicious_destination"
+
     return "unknown"
 
 
@@ -45,7 +48,10 @@ def parse_log(log_line):
     source_ip = match.group("source_ip")
 
     try:
-        datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+        datetime.strptime(
+            timestamp,
+            "%Y-%m-%d %H:%M:%S"
+        )
     except ValueError:
         return None
 
@@ -62,11 +68,24 @@ def parse_log(log_line):
 
 
 if __name__ == "__main__":
-    test_log = (
-        "2026-09-19 07:31:12 WARNING "
-        "Failed login username=admin ip=192.168.1.20"
-    )
 
-    parsed_event = parse_log(test_log)
+    test_logs = [
+        (
+            "2026-09-19 07:31:12 WARNING "
+            "Failed login username=admin ip=192.168.1.20"
+        ),
+        (
+            "2026-09-19 07:35:00 WARNING "
+            "Suspicious network connection ip=10.0.0.25"
+        ),
+        (
+            "2026-09-19 07:40:12 WARNING "
+            "Connection to suspicious destination ip=185.220.101.5"
+        )
+    ]
 
-    print(parsed_event)
+    for test_log in test_logs:
+
+        parsed_event = parse_log(test_log)
+
+        print(parsed_event)
